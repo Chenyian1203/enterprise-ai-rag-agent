@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>企业级 AI 竞品情报中心</title>
+    <title>企业级 AI 多 Agent 运营中台</title>
     <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -11,75 +11,63 @@
         .header h1 { margin: 0; font-size: 22px; color: #1f2329; }
         
         .layout { display: grid; grid-template-columns: 400px 1fr; gap: 20px; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
         
-        /* 竞品卡片样式 */
         .product-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
         .product-card { display: flex; gap: 15px; align-items: center; padding: 10px; border: 1px solid #eef0f3; border-radius: 8px; background: #fafafa; }
         .product-card img { width: 50px; height: 50px; object-fit: contain; background: white; border-radius: 4px; border: 1px solid #eee; }
         .product-info h4 { margin: 0 0 5px 0; font-size: 13px; color: #1f2329; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
         .product-info p { margin: 0; font-size: 12px; color: #666; }
-        .tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        .tag-high { background: #fff1f0; color: #f54a45; } /* 红海 */
-        .tag-low { background: #e8f0ff; color: #3370ff; } /* 蓝海 */
 
-        #scatterChart { width: 100%; height: 350px; }
+        #scatterChart { width: 100%; height: 250px; margin-bottom: 20px; }
         
-        .report-box { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #eef0f3; overflow-y: auto; max-height: 500px; font-size: 14px; line-height: 1.8; }
+        .report-box { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #eef0f3; overflow-y: auto; max-height: 600px; font-size: 14px; line-height: 1.8; margin-bottom: 20px;}
         .report-box h2 { color: #3370ff; font-size: 16px; margin-top: 20px; }
         
-        /* 溯源高亮 */
-        .highlight-rule { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 10px 0; font-size: 13px; color: #856404; }
-        .btn { background: #1f2329; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; }
+        .input-area { display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 15px; outline: none; }
+        .btn { background: #1f2329; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold;}
         .btn:hover { background: #333; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📡 跨境电商 AI 竞品情报中心</h1>
-        <div>实时监控 · 合规溯源 · 策略生成</div>
+        <h1>📡 跨境电商 AI 多 Agent 运营中台</h1>
+        <div>意图路由 · RAG 溯源 · 策略生成</div>
     </div>
 
     <div class="layout">
-        <!-- 左侧：真实竞品卡片 + 散点图 -->
         <div class="card">
-            <h3 style="margin-top: 0; font-size: 16px;">📦 实时抓取的竞品数据</h3>
+            <h3 style="margin-top: 0; font-size: 16px;">📦 实时拉取的竞品数据</h3>
             <div class="product-grid" id="productGrid"></div>
-
-            <h3 style="font-size: 16px;">🎯 价格-评分四象限散点图</h3>
+            <h3 style="font-size: 16px;">🎯 价格-评分四象限图</h3>
             <div id="scatterChart"></div>
-            
-            <button class="btn" style="margin-top: 20px;" onclick="startAnalysis()">🤖 生成智能合规报告</button>
         </div>
 
-        <!-- 右侧：AI 报告区 -->
         <div class="card">
-            <h3 style="margin-top: 0; font-size: 16px; color: #3370ff;">📋 AI 商业战略与合规风控报告</h3>
-            <div class="report-box" id="reportArea">等待生成...</div>
+            <h3 style="margin-top: 0; font-size: 16px; color: #3370ff;">💬 智能业务对话 (多 Agent)</h3>
+            <div class="report-box" id="reportArea">你好！我是你的 AI 运营助理。你可以试着问我：“帮我看看现在的选品机会”、“帮我排查一下这个 Listing 有没有违禁词”或者“帮我回复这个买家”。</div>
+            
+            <div class="input-area">
+                <input type="text" id="userInput" placeholder="请输入你的业务指令..." onkeypress="if(event.key==='Enter') startChat()">
+                <button class="btn" onclick="startChat()">发送指令</button>
+            </div>
         </div>
     </div>
 
-        <script>
+    <script>
         const myChart = echarts.init(document.getElementById('scatterChart'));
-        let realProducts = []; // 用来存真实抓取的数据
 
-        // 🚨 页面加载时，立刻去后端拉取真实的公网数据
         async function fetchRealData() {
-            const grid = document.getElementById('productGrid');
-            grid.innerHTML = "<span style='color: #3370ff;'>正在从公网抓取真实数据...</span>";
-            
             const res = await fetch('/api/get_real_products');
             const data = await res.json();
-            
             if (data.status === 'success') {
-                realProducts = data.products;
-                renderDashboard(realProducts);
+                renderDashboard(data.products);
             }
         }
 
         function renderDashboard(products) {
             const grid = document.getElementById('productGrid');
-            // 渲染真实带有图片的卡片
             grid.innerHTML = products.map(p => `
                 <div class="product-card">
                     <img src="${p.img}" onerror="this.src='https://via.placeholder.com/50'">
@@ -91,44 +79,38 @@
                 </div>
             `).join('');
 
-            // 渲染真实数据的散点图
             myChart.setOption({
                 grid: { left: '10%', right: '10%', top: '15%', bottom: '15%' },
                 xAxis: { name: '价格 ($)', type: 'value', splitLine: { show: false } },
                 yAxis: { name: '评分', type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
-                tooltip: {
-                    formatter: function (params) {
-                        return `<b>${params.data.name}</b><br/>价格: $${params.data.value[0]}<br/>评分: ${params.data.value[1]}⭐`;
-                    }
-                },
-                series: [{
-                    type: 'scatter',
-                    symbolSize: 20,
-                    itemStyle: { color: '#3370ff', shadowBlur: 10, shadowColor: 'rgba(51, 112, 255, 0.5)' },
-                    data: products.map(p => ({
-                        name: p.title,
-                        value: [p.price, p.rating]
-                    }))
-                }]
+                tooltip: { formatter: function (params) { return `<b>${params.data.name}</b><br/>价格: $${params.data.value[0]}<br/>评分: ${params.data.value[1]}⭐`; } },
+                series: [{ type: 'scatter', symbolSize: 20, itemStyle: { color: '#3370ff', shadowBlur: 10, shadowColor: 'rgba(51, 112, 255, 0.5)' }, data: products.map(p => ({ name: p.title, value: [p.price, p.rating] })) }]
             });
         }
 
-        async function startAnalysis() {
-            if (realProducts.length === 0) return alert("请等待数据加载！");
+        async function startChat() {
+            const input = document.getElementById('userInput').value;
+            if (!input) return;
             
             const reportArea = document.getElementById('reportArea');
-            reportArea.innerHTML = "<span style='color: #3370ff;'>正在启动 RAG 溯源与 AI 分析...</span>";
-            
-            const response = await fetch('/api/analyze_stream', {
+            // 把用户的输入显示出来
+            reportArea.innerHTML += `<div style="margin-bottom: 10px; color: #1f2329; background: #e8f0ff; padding: 8px 12px; border-radius: 6px; width: fit-content; margin-left: auto;">${input}</div>`;
+            document.getElementById('userInput').value = '';
+
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ competitors: realProducts })
+                body: JSON.stringify({ user_input: input })
             });
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let markdownText = "";
-            reportArea.innerHTML = "";
+            
+            // 创建 AI 回答的容器
+            const aiDiv = document.createElement('div');
+            aiDiv.style.marginBottom = "10px";
+            reportArea.appendChild(aiDiv);
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -142,7 +124,7 @@
                         try {
                             const data = JSON.parse(dataStr);
                             markdownText += data.text;
-                            reportArea.innerHTML = marked.parse(markdownText);
+                            aiDiv.innerHTML = marked.parse(markdownText);
                             reportArea.scrollTop = reportArea.scrollHeight;
                         } catch (e) {}
                     }
@@ -150,7 +132,6 @@
             }
         }
 
-        // 🚨 页面一打开，立刻执行抓取
         fetchRealData();
     </script>
 </body>
