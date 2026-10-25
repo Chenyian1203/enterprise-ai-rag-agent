@@ -9,45 +9,41 @@
         body { font-family: -apple-system, sans-serif; background: #eef2f5; margin: 0; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .header h1 { margin: 0; font-size: 22px; color: #1f2329; }
-        
         .layout { display: grid; grid-template-columns: 400px 1fr; gap: 20px; }
         .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-        
         .product-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
         .product-card { display: flex; gap: 15px; align-items: center; padding: 10px; border: 1px solid #eef0f3; border-radius: 8px; background: #fafafa; }
         .product-card img { width: 50px; height: 50px; object-fit: contain; background: white; border-radius: 4px; border: 1px solid #eee; }
         .product-info h4 { margin: 0 0 5px 0; font-size: 13px; color: #1f2329; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
         .product-info p { margin: 0; font-size: 12px; color: #666; }
-
         #scatterChart { width: 100%; height: 250px; margin-bottom: 20px; }
-        
         .report-box { flex: 1; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #eef0f3; overflow-y: auto; max-height: 600px; font-size: 14px; line-height: 1.8; margin-bottom: 20px;}
         .report-box h2 { color: #3370ff; font-size: 16px; margin-top: 20px; }
-        
         .input-area { display: flex; gap: 10px; }
         input[type="text"] { flex: 1; padding: 12px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 15px; outline: none; }
         .btn { background: #1f2329; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold;}
         .btn:hover { background: #333; }
+        .token-badge { background: #1f2329; color: #00ff00; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-family: monospace; font-size: 14px; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>📡 跨境电商 AI 多 Agent 运营中台</h1>
-        <div>意图路由 · RAG 溯源 · 策略生成</div>
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <div style="font-size: 14px; color: #666;">LangGraph 架构驱动</div>
+            <div class="token-badge">💰 Token 消耗: <span id="tokenCounter">0</span></div>
+        </div>
     </div>
-
     <div class="layout">
         <div class="card">
-            <h3 style="margin-top: 0; font-size: 16px;">📦 实时拉取的竞品数据</h3>
+            <h3 style="margin-top: 0; font-size: 16px;">📦 实时拉取的竞品数据 <span id="dataSource" style="font-size:12px; color:#666; font-weight:normal;"></span></h3>
             <div class="product-grid" id="productGrid"></div>
             <h3 style="font-size: 16px;">🎯 价格-评分四象限图</h3>
             <div id="scatterChart"></div>
         </div>
-
         <div class="card">
             <h3 style="margin-top: 0; font-size: 16px; color: #3370ff;">💬 智能业务对话 (多 Agent)</h3>
-            <div class="report-box" id="reportArea">你好！我是你的 AI 运营助理。你可以试着问我：“帮我看看现在的选品机会”、“帮我排查一下这个 Listing 有没有违禁词”或者“帮我回复这个买家”。</div>
-            
+            <div class="report-box" id="reportArea">你好！我是 AI 运营助理。你可以问我：“Best Seller 有风险吗？” 或者 “帮我写一封道歉信”。</div>
             <div class="input-area">
                 <input type="text" id="userInput" placeholder="请输入你的业务指令..." onkeypress="if(event.key==='Enter') startChat()">
                 <button class="btn" onclick="startChat()">发送指令</button>
@@ -62,6 +58,7 @@
             const res = await fetch('/api/get_real_products');
             const data = await res.json();
             if (data.status === 'success') {
+                document.getElementById('dataSource').innerText = `(数据源: ${data.source})`;
                 renderDashboard(data.products);
             }
         }
@@ -91,27 +88,20 @@
         async function startChat() {
             const input = document.getElementById('userInput').value;
             if (!input) return;
-            
             const reportArea = document.getElementById('reportArea');
-            // 把用户的输入显示出来
             reportArea.innerHTML += `<div style="margin-bottom: 10px; color: #1f2329; background: #e8f0ff; padding: 8px 12px; border-radius: 6px; width: fit-content; margin-left: auto;">${input}</div>`;
             document.getElementById('userInput').value = '';
-
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_input: input })
             });
-
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let markdownText = "";
-            
-            // 创建 AI 回答的容器
             const aiDiv = document.createElement('div');
             aiDiv.style.marginBottom = "10px";
             reportArea.appendChild(aiDiv);
-
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -132,6 +122,14 @@
             }
         }
 
+        async function updateTokenUsage() {
+            try {
+                const res = await fetch('/api/token_usage');
+                const data = await res.json();
+                document.getElementById('tokenCounter').innerText = data.total_tokens;
+            } catch(e) {}
+        }
+        setInterval(updateTokenUsage, 3000);
         fetchRealData();
     </script>
 </body>
