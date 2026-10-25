@@ -19,3 +19,12 @@
 ```bash
 docker build -t ai-agent .
 docker run -p 8000:8000 ai-agent
+## 🚀 本地运行 
+pip install -r requirements.txt
+cd backend
+uvicorn main:app --reload
+# 访问 http://127.0.0.1:8000/
+
+3. 页面往下滑，点击绿色的 **`Commit changes`** 按钮。
+
+---
